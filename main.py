@@ -9,6 +9,7 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 def create_output_directory(output_path):
     try:
         if not os.path.exists(output_path):
@@ -18,6 +19,7 @@ def create_output_directory(output_path):
         logging.error(f"Error creating output directory: {e}")
         print(f"Error creating output directory: {e}")
         raise
+
 
 def excel_to_xliff(excel_file):
     try:
