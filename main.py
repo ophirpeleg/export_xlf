@@ -40,16 +40,20 @@ def excel_to_xliff(excel_file):
             file_element = ET.SubElement(root, "file", **file_attributes)
             body_element = ET.SubElement(file_element, "body")
 
+            seen_ids = set()  # To keep track of seen Ids and avoid duplicates
             for row in sheet.iter_rows(min_row=2, values_only=True):
-                trans_unit_element = ET.SubElement(body_element, "trans-unit", id=str(row[0]), maxwidth=str(row[1]), size_unit=str(row[2]))
-                source_element = ET.SubElement(trans_unit_element, "source")
-                source_element.text = f"{str(row[3])}"
-                target_element = ET.SubElement(trans_unit_element, "target")
-                target_element.text = f"{str(row[4])}"
+                id_value = str(row[0])  # Assuming the ID is in the first column
+                if id_value not in seen_ids:  # Check if the ID is already processed
+                    seen_ids.add(id_value)  # Mark this ID as seen
+                    trans_unit_element = ET.SubElement(body_element, "trans-unit", id=id_value, maxwidth=str(row[1]), size_unit=str(row[2]))
+                    source_element = ET.SubElement(trans_unit_element, "source")
+                    source_element.text = f"{str(row[3])}"
+                    target_element = ET.SubElement(trans_unit_element, "target")
+                    target_element.text = f"{str(row[4])}"
 
-                if len(row) > 5 and row[5]:
-                    note_element = ET.SubElement(trans_unit_element, "note")
-                    note_element.text = f"{str(row[5])}"
+                    if len(row) > 5 and row[5]:
+                        note_element = ET.SubElement(trans_unit_element, "note")
+                        note_element.text = f"{str(row[5])}"
 
             xml_declaration = '<?xml version="1.0" encoding="UTF-8"?>\n'
             xml_string = minidom.parseString(ET.tostring(root)).toprettyxml(indent="    ")
@@ -79,6 +83,7 @@ def excel_to_xliff(excel_file):
         logging.error(f"An error occurred during the conversion: {e}")
         print(f"An error occurred during the conversion: {e}")
         raise
+
 
 if __name__ == "__main__":
     try:
