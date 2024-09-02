@@ -9,7 +9,6 @@ import logging
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-
 def create_output_directory(output_path):
     try:
         if not os.path.exists(output_path):
@@ -19,7 +18,6 @@ def create_output_directory(output_path):
         logging.error(f"Error creating output directory: {e}")
         print(f"Error creating output directory: {e}")
         raise
-
 
 def excel_to_xliff(excel_file):
     try:
@@ -33,7 +31,7 @@ def excel_to_xliff(excel_file):
             file_attributes = {
                 "original": "Salesforce",
                 "source-language": "en_US",
-                "target-language": sheet_name.lower().replace("_", "-"),
+                "target-language": sheet_name,
                 "translation-type": "metadata",
                 "datatype": "xml"
             }
@@ -47,9 +45,9 @@ def excel_to_xliff(excel_file):
                     seen_ids.add(id_value)  # Mark this ID as seen
                     trans_unit_element = ET.SubElement(body_element, "trans-unit", id=id_value, maxwidth=str(row[1]), size_unit=str(row[2]))
                     source_element = ET.SubElement(trans_unit_element, "source")
-                    source_element.text = f"{str(row[3])}"
+                    source_element.text = f"{str(row[2])}"  # Correct source text
                     target_element = ET.SubElement(trans_unit_element, "target")
-                    target_element.text = f"{str(row[4])}"
+                    target_element.text = f"{str(row[3])}"  # Correct target text
 
                     if len(row) > 5 and row[5]:
                         note_element = ET.SubElement(trans_unit_element, "note")
@@ -65,7 +63,7 @@ def excel_to_xliff(excel_file):
                 title="Save File As",
                 defaultextension=".xlf",
                 filetypes=[("XLIFF files", "*.xlf"), ("All Files", "*.*")],
-                initialfile=f"{sheet_name.lower().replace('_', '-')}_output.xlf"
+                initialfile=f"{sheet_name}_output.xlf"
             )
 
             if output_file_path:
@@ -83,7 +81,6 @@ def excel_to_xliff(excel_file):
         logging.error(f"An error occurred during the conversion: {e}")
         print(f"An error occurred during the conversion: {e}")
         raise
-
 
 if __name__ == "__main__":
     try:
