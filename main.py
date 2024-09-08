@@ -72,9 +72,9 @@ def excel_to_xliff(excel_file):
                     seen_ids.add(id_value)  # Mark this ID as seen
                     trans_unit_element = ET.SubElement(body_element, "trans-unit", id=id_value, maxwidth=str(row[1]), size_unit=str(row[2]))
                     source_element = ET.SubElement(trans_unit_element, "source")
-                    source_element.text = f"{str(row[2])}"  # Correct source text
+                    source_element.text = f"{str(row[3])}"
                     target_element = ET.SubElement(trans_unit_element, "target")
-                    target_element.text = f"{str(row[3])}"  # Correct target text
+                    target_element.text = f"{str(row[4])}"
 
                     if len(row) > 5 and row[5]:
                         note_element = ET.SubElement(trans_unit_element, "note")
