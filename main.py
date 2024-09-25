@@ -191,6 +191,77 @@ def select_xliff_to_excel():
         logging.info("No XLIFF file selected. Exiting.")
         print("No XLIFF file selected. Exiting.")
 
+
+def process_files():
+    if not source_file_path or not english_file_path:
+        messagebox.showerror("Error", "Please select both files.")
+        return
+
+    try:
+        # Convert source XLIFF to Excel and save it
+        logging.info("Converting source language file to Excel...")
+        xliff_to_excel(source_file_path)
+
+        # Now process the English file, but don't save it, just extract Target values
+        logging.info("Extracting Target values from the English file...")
+
+        # Parse the English XLIFF file and store ID-to-Target mappings
+        english_translation_map = {}
+        tree = ET.parse(english_file_path)
+        root = tree.getroot()
+
+        for file_element in root.findall("file"):
+            for trans_unit in file_element.find("body").findall("trans-unit"):
+                id_value = trans_unit.get("id", "")
+                target_text = trans_unit.find("target").text if trans_unit.find("target") is not None else ""
+                english_translation_map[id_value] = target_text  # Store the ID-to-Target mapping
+
+        # Load the saved Excel file for the source language
+        logging.info("Loading the source language Excel file...")
+        source_excel_path = filedialog.askopenfilename(
+            title="Select the Source Excel File",
+            filetypes=[("Excel files", "*.xlsx"), ("All Files", "*.*")]
+        )
+        if not source_excel_path:
+            raise ValueError("No source Excel file selected")
+
+        wb = openpyxl.load_workbook(source_excel_path)
+        ws = wb.active
+
+        # Add a new column called "Translated to English"
+        ws["G1"] = "Translated to English"  # Assuming column G is free
+
+        # Iterate over the rows of the source file and match IDs with English translations
+        for row in ws.iter_rows(min_row=2, max_col=6):  # Assuming data goes from column A to F
+            id_value = str(row[0].value)  # Column A contains IDs
+            english_translation = english_translation_map.get(id_value, "")
+            ws[f"G{row[0].row}"] = english_translation  # Insert the English translation in column G
+
+        # Apply styling to the entire sheet, including the new column "Translated to English"
+        style_excel_sheet(ws)
+
+        # Save the modified Excel file
+        output_file_path = filedialog.asksaveasfilename(
+            title="Save Modified Excel File As",
+            defaultextension=".xlsx",
+            filetypes=[("Excel files", "*.xlsx"), ("All Files", "*.*")],
+            initialfile="Source_with_English_Translations.xlsx"
+        )
+
+        if output_file_path:
+            wb.save(output_file_path)
+            logging.info(f"Source file updated with English translations and saved at {output_file_path}")
+            messagebox.showinfo("Success", f"File saved successfully at {output_file_path}")
+        else:
+            logging.info("File save operation was cancelled.")
+            print("File save operation was cancelled.")
+
+    except Exception as e:
+        logging.error(f"An error occurred during the processing: {e}")
+        messagebox.showerror("Error", f"An error occurred: {e}")
+
+
+
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Excel to XLIFF Converter")
@@ -201,5 +272,8 @@ if __name__ == "__main__":
 
     btn_xliff_to_excel = tk.Button(root, text="XLIFF to Excel", command=select_xliff_to_excel, width=20)
     btn_xliff_to_excel.pack(pady=10)
+
+    btn_select_files = tk.Button(root, text="Select Source and English Files", command=select_two_files, width=20)
+    btn_select_files.pack(pady=10)
 
     root.mainloop()
