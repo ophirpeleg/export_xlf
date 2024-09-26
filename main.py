@@ -14,6 +14,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 # Global variable for output file path
 output_file_path = None
+target_language = None
 
 
 # Function to style the Excel sheet
@@ -36,18 +37,6 @@ def style_excel_sheet(ws):
                 cell.alignment = Alignment(horizontal="left")
 
     ws.sheet_view.showGridLines = False
-
-
-
-def create_output_directory(output_path):
-    try:
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
-        logging.info("Output directory created.")
-    except Exception as e:
-        logging.error(f"Error creating output directory: {e}")
-        print(f"Error creating output directory: {e}")
-        raise
 
 
 def excel_to_xliff(excel_file):
@@ -117,6 +106,7 @@ def excel_to_xliff(excel_file):
 # Function to convert XLIFF to Excel
 def xliff_to_excel(xliff_file):
     global output_file_path  # Make output_file_path global
+    global target_language
 
     try:
         tree = ET.parse(xliff_file)
@@ -191,6 +181,7 @@ def select_excel_to_xliff():
         logging.info("No Excel file selected. Exiting.")
         print("No Excel file selected. Exiting.")
 
+
 def select_xliff_to_excel():
     xliff_file_path = filedialog.askopenfilename(
         title="Select XLIFF File",
@@ -217,6 +208,7 @@ def select_two_files():
     # Function to select the source language file
     def select_source_file():
         nonlocal source_file_path
+
         source_file_path = filedialog.askopenfilename(
             title="Select Source Language File",
             filetypes=[("XLIFF files", "*.xlf"), ("All Files", "*.*")]
@@ -300,7 +292,7 @@ def select_two_files():
                 title="Save Modified Excel File As",
                 defaultextension=".xlsx",
                 filetypes=[("Excel files", "*.xlsx"), ("All Files", "*.*")],
-                initialfile="Source_with_English_Translations_and_Feedback.xlsx"
+                initialfile=f"{target_language}_with_English_Translations_and_Feedback.xlsx"
             )
 
             if output_file_path:
