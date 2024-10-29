@@ -400,7 +400,7 @@ def select_two_files():
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Excel to XLIFF Converter")
-    root.geometry("300x200")
+    root.geometry("300x240")
 
     btn_excel_to_xliff = tk.Button(root, text="Excel to XLIFF", command=select_excel_to_xliff, width=20)
     btn_excel_to_xliff.pack(pady=10)
@@ -414,5 +414,8 @@ if __name__ == "__main__":
 
     btn_select_files = tk.Button(root, text="Feedback file automation", command=select_two_files, width=20)
     btn_select_files.pack(pady=10)
+
+    lbl_version = tk.Label(root, text="Version 1.0")
+    lbl_version.pack(pady=10)
 
     root.mainloop()
