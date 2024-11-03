@@ -6,6 +6,9 @@ from tkinter import filedialog, messagebox
 import tkinter as tk
 import logging
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+import re
+import zipfile
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -247,10 +250,10 @@ def multiple_xliff_to_excel():
     logging.info("Multiple files processed successfully.")
     messagebox.showinfo("Success", "All files have been processed and saved.")
 
-def select_two_files():
+def select_two_files(root):
     # Create a new window for selecting files
     select_window = tk.Toplevel(root)
-    select_window.title("Select Source Language and English Files")
+    select_window.title("Select Source Language and Optional English Files")
     select_window.geometry("400x200")
 
     source_file_path = None
@@ -270,25 +273,25 @@ def select_two_files():
         else:
             logging.info("No source language file selected.")
 
-    # Function to select the English file
+    # Function to select the English file (optional)
     def select_english_file():
         nonlocal english_file_path
         english_file_path = filedialog.askopenfilename(
-            title="Select English File",
+            title="Select English File (Optional)",
             filetypes=[("XLIFF files", "*.xlf"), ("All Files", "*.*")]
         )
         if english_file_path:
             english_file_label.config(text=f"English File: {english_file_path}")
             logging.info(f"English file selected: {english_file_path}")
         else:
-            logging.info("No English file selected.")
+            logging.info("No English file selected. English translations will not be added.")
 
     # Function to process the files after selection
     def process_files():
         global output_file_path  # Reuse the global output_file_path
 
-        if not source_file_path or not english_file_path:
-            messagebox.showerror("Error", "Please select both files.")
+        if not source_file_path:
+            messagebox.showerror("Error", "Please select the source language file.")
             return
 
         try:
@@ -311,44 +314,50 @@ def select_two_files():
                 logging.info("File save operation was cancelled.")
                 return  # Exit if the user cancels the save operation
 
-            # Now process the English file, but don't save it, just extract Target values
-            logging.info("Extracting Target values from the English file...")
-
-            # Parse the English XLIFF file and store ID-to-Target mappings
+            # Optional: Process the English file to extract Target values, if available
             english_translation_map = {}
-            tree = ET.parse(english_file_path)
-            root = tree.getroot()
+            if english_file_path:
+                logging.info("Extracting Target values from the English file...")
+                tree = ET.parse(english_file_path)
+                root = tree.getroot()
 
-            for file_element in root.findall("file"):
-                for trans_unit in file_element.find("body").findall("trans-unit"):
-                    id_value = trans_unit.get("id", "")
-                    target_text = trans_unit.find("target").text if trans_unit.find("target") is not None else ""
-                    english_translation_map[id_value] = target_text  # Store the ID-to-Target mapping
+                for file_element in root.findall("file"):
+                    for trans_unit in file_element.find("body").findall("trans-unit"):
+                        id_value = trans_unit.get("id", "")
+                        target_text = trans_unit.find("target").text if trans_unit.find("target") is not None else ""
+                        english_translation_map[id_value] = target_text
 
             # Load the previously saved source Excel file
             logging.info(f"Loading the previously saved Excel file from {output_file_path}...")
-            if not output_file_path:
-                raise ValueError("No output file found. Please save the Excel file first.")
-
             wb = openpyxl.load_workbook(output_file_path)
             ws = wb.active
 
-            # Add a new column called "Translated to English" (Column G)
-            ws["G1"] = "Translated to English"
+            # If the English file is selected, add "Translated to English" column
+            if english_file_path:
+                # Add columns "Feedback By Customer" and "Feedback for Length"
+                ws["H1"] = "Feedback By Customer"
+                ws["I1"] = "Feedback for Length"
+                ws["G1"] = "Translated to English"
 
-            # Add two additional columns "Feedback By Customer" and "Feedback for Length"
-            ws["H1"] = "Feedback By Customer"
-            ws["I1"] = "Feedback for Length"
+                for row in ws.iter_rows(min_row=2, max_col=6):  # Assuming data goes from column A to F
+                    id_value = str(row[0].value)  # Column A contains IDs
+                    english_translation = english_translation_map.get(id_value, "")
+                    ws[f"G{row[0].row}"] = english_translation  # Insert the English translation in column G
 
-            # Iterate over the rows of the source file and match IDs with English translations
-            for row in ws.iter_rows(min_row=2, max_col=6):  # Assuming data goes from column A to F
-                id_value = str(row[0].value)  # Column A contains IDs
-                english_translation = english_translation_map.get(id_value, "")
-                ws[f"G{row[0].row}"] = english_translation  # Insert the English translation in column G
-
-                # Insert the formula for "Feedback for Length" (Column I)
-                feedback_formula = f'=IF(H{row[0].row}="","",IF(LEN(H{row[0].row})>B{row[0].row},"* The new translation is too long ("&LEN(H{row[0].row})&") should be under 40 chars","OK"))'
-                ws[f"I{row[0].row}"] = feedback_formula  # Insert formula in column I
+                    # Insert the formula for "Feedback for Length" (Column I)
+                    feedback_formula = (f'=IF(H{row[0].row}="","",IF(LEN(H{row[0].row})>B{row[0].row},"* The new '
+                                        f'translation is too long ("&LEN(H{row[0].row})&") should be under '
+                                        f'"&B{row[0].row}&" chars","OK"))')
+                    ws[f"I{row[0].row}"] = feedback_formula
+            else:
+                ws["G1"] = "Feedback By Customer"
+                ws["H1"] = "Feedback for Length"
+                # Iterate over the rows of the source file and match IDs with English translations if available
+                for row in ws.iter_rows(min_row=2, max_col=6):  # Assuming data goes from column A to F
+                    feedback_formula = (f'=IF(G{row[0].row}="","",IF(LEN(G{row[0].row})>B{row[0].row},"* The new '
+                                        f'translation is too long ("&LEN(G{row[0].row})&") should be under "'
+                                        f'&B{row[0].row}&" chars","OK"))')
+                    ws[f"H{row[0].row}"] = feedback_formula
 
             # Apply styling to the entire sheet, including the new columns
             style_excel_sheet(ws)
@@ -358,12 +367,12 @@ def select_two_files():
                 title="Save Modified Excel File As",
                 defaultextension=".xlsx",
                 filetypes=[("Excel files", "*.xlsx"), ("All Files", "*.*")],
-                initialfile=f"{target_language}_with_English_Translations_and_Feedback.xlsx"
+                initialfile=f"{target_language}_with_Feedback.xlsx"
             )
 
             if output_file_path:
                 wb.save(output_file_path)
-                logging.info(f"Source file updated with English translations and feedback saved at {output_file_path}")
+                logging.info(f"Source file updated with feedback saved at {output_file_path}")
                 messagebox.showinfo("Success", f"File saved successfully at {output_file_path}")
             else:
                 logging.info("File save operation was cancelled.")
@@ -377,14 +386,14 @@ def select_two_files():
     source_file_btn = tk.Button(select_window, text="Select Source Language File", command=select_source_file)
     source_file_btn.pack(pady=10)
 
-    english_file_btn = tk.Button(select_window, text="Select English File", command=select_english_file)
+    english_file_btn = tk.Button(select_window, text="Select English File (Optional)", command=select_english_file)
     english_file_btn.pack(pady=10)
 
     # Labels to display selected file paths
     source_file_label = tk.Label(select_window, text="Source File: Not selected")
     source_file_label.pack(pady=5)
 
-    english_file_label = tk.Label(select_window, text="English File: Not selected")
+    english_file_label = tk.Label(select_window, text="English File (Optional): Not selected")
     english_file_label.pack(pady=5)
 
     # Button to start processing
@@ -396,11 +405,94 @@ def select_two_files():
     close_btn.pack(pady=10)
 
 
+def create_package(root):
+    # Hide the root window (if not already hidden)
+    root.withdraw()
+
+    # Ask the user to select multiple .objectTranslation files
+    input_file_paths = filedialog.askopenfilenames(title="Select .objectTranslation files",
+                                                   filetypes=[("Object Translation Files", "*.objectTranslation")])
+
+    # Ask the user to select the base folder to save zipped deployment packages
+    base_output_folder = filedialog.askdirectory(title="Select the base folder to save deployment packages")
+
+    # Define sections to remove
+    sections_to_remove = ['fields', 'validationRules', 'webLinks', 'layouts', 'fieldSets']
+
+    # Dictionary to keep track of files for each language
+    language_files = {}
+
+    # Process each selected file
+    if input_file_paths and base_output_folder:
+        for input_file_path in input_file_paths:
+            # Read the input file content
+            with open(input_file_path, 'r', encoding='utf-8') as file:
+                file_content = file.read()
+
+            # Remove all specified sections and any resulting blank lines
+            for section in sections_to_remove:
+                file_content = re.sub(rf'<{section}>.*?</{section}>\s*', '', file_content, flags=re.DOTALL)
+
+            # Extract the object API name and language code from the filename
+            file_name = os.path.basename(input_file_path)
+            object_api_name, language_code = file_name.split('-')
+            language_code = language_code.replace('.objectTranslation', '')
+
+            # Organize files by language in a dictionary
+            if language_code not in language_files:
+                language_files[language_code] = set()
+            language_files[language_code].add(object_api_name)
+
+            # Define the language-specific "unpackaged/translations" folder
+            unpackaged_folder = os.path.join(base_output_folder, language_code, "unpackaged", "objectTranslations")
+            os.makedirs(unpackaged_folder, exist_ok=True)  # Create the folder if it doesn't exist
+
+            # Save the modified .objectTranslation file in the translations folder
+            modified_file_path = os.path.join(unpackaged_folder,
+                                              file_name.replace('.objectTranslation', '.objectTranslation'))
+            with open(modified_file_path, 'w', encoding='utf-8') as modified_file:
+                modified_file.write(file_content)
+
+        # For each language, create a package.xml and zip the contents within an "unpackaged" folder
+        for language_code, object_api_names in language_files.items():
+            # Generate package.xml for the current language
+            package_xml_content = '''<?xml version="1.0" encoding="UTF-8"?>
+    <Package xmlns="http://soap.sforce.com/2006/04/metadata">
+        <types>
+    '''
+            for api_name in sorted(object_api_names):
+                # Include the language code in each member entry as <API_NAME>-<language_code>
+                package_xml_content += f'        <members>{api_name}-{language_code}</members>\n'
+
+            package_xml_content += '''        <name>CustomObjectTranslation</name>
+        </types>
+        <version>57.0</version>
+    </Package>'''
+
+            # Save the package.xml in the "unpackaged" folder for the language
+            package_xml_path = os.path.join(base_output_folder, language_code, "unpackaged", "package.xml")
+            with open(package_xml_path, 'w', encoding='utf-8') as package_file:
+                package_file.write(package_xml_content)
+
+            # Zip the "unpackaged" folder for deployment
+            unpackaged_folder_path = os.path.join(base_output_folder, language_code, "unpackaged")
+            zip_file_path = os.path.join(base_output_folder, f"{language_code}_deployment_package.zip")
+            with zipfile.ZipFile(zip_file_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                for root_dir, _, files in os.walk(unpackaged_folder_path):
+                    for file in files:
+                        file_path = os.path.join(root_dir, file)
+                        zipf.write(file_path, os.path.relpath(file_path, os.path.join(base_output_folder, language_code)))
+
+            print(f"Deployment package for language '{language_code}' created: {zip_file_path}")
+    else:
+        print("File selection was cancelled.")
+
+
 # GUI update to add the new button
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Excel to XLIFF Converter")
-    root.geometry("300x240")
+    root.geometry("300x260")
 
     btn_excel_to_xliff = tk.Button(root, text="Excel to XLIFF", command=select_excel_to_xliff, width=20)
     btn_excel_to_xliff.pack(pady=10)
@@ -412,10 +504,14 @@ if __name__ == "__main__":
                                             width=20)
     btn_multiple_xliff_to_excel.pack(pady=10)
 
-    btn_select_files = tk.Button(root, text="Feedback file automation", command=select_two_files, width=20)
+    btn_select_files = tk.Button(root, text="Feedback file automation", command=lambda: select_two_files(root),
+                                 width=20)
     btn_select_files.pack(pady=10)
 
-    lbl_version = tk.Label(root, text="Version 1.0")
+    btn_create_package = tk.Button(root, text="Create Package", command=lambda: create_package(root), width=20)
+    btn_create_package.pack(pady=10)
+
+    lbl_version = tk.Label(root, text="Version 1.1")
     lbl_version.pack(pady=10)
 
     root.mainloop()
