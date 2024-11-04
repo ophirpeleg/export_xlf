@@ -508,7 +508,8 @@ if __name__ == "__main__":
                                  width=20)
     btn_select_files.pack(pady=10)
 
-    btn_create_package = tk.Button(root, text="Create Package", command=lambda: create_package(root), width=20)
+    btn_create_package = tk.Button(root, text="Create Package (Tabs and Labels)", command=lambda: create_package(root)
+                                   , width=20)
     btn_create_package.pack(pady=10)
 
     lbl_version = tk.Label(root, text="Version 1.1")
