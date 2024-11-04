@@ -493,23 +493,24 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.title("Excel to XLIFF Converter")
     root.geometry("300x260")
+    btn_width = 30
 
-    btn_excel_to_xliff = tk.Button(root, text="Excel to XLIFF", command=select_excel_to_xliff, width=20)
+    btn_excel_to_xliff = tk.Button(root, text="Excel to XLIFF", command=select_excel_to_xliff, width=btn_width)
     btn_excel_to_xliff.pack(pady=10)
 
-    btn_xliff_to_excel = tk.Button(root, text="XLIFF to Excel", command=select_xliff_to_excel, width=20)
+    btn_xliff_to_excel = tk.Button(root, text="XLIFF to Excel", command=select_xliff_to_excel, width=btn_width)
     btn_xliff_to_excel.pack(pady=10)
 
     btn_multiple_xliff_to_excel = tk.Button(root, text="Multiple Files XLIFF to Excel", command=multiple_xliff_to_excel,
-                                            width=20)
+                                            width=btn_width)
     btn_multiple_xliff_to_excel.pack(pady=10)
 
     btn_select_files = tk.Button(root, text="Feedback file automation", command=lambda: select_two_files(root),
-                                 width=20)
+                                 width=btn_width)
     btn_select_files.pack(pady=10)
 
     btn_create_package = tk.Button(root, text="Create Package (Tabs and Labels)", command=lambda: create_package(root)
-                                   , width=20)
+                                   , width=btn_width)
     btn_create_package.pack(pady=10)
 
     lbl_version = tk.Label(root, text="Version 1.1")
