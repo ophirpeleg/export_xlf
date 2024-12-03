@@ -1,12 +1,15 @@
 # Excel to XLIFF Converter Tool
 
-This tool is designed to streamline translation activities, making it easier to convert between XLIFF and Excel formats. It supports handling multiple XLIFF files, automating feedback workflows, and creating deployment packages for Tabs and Labels in Salesforce.
+This tool is designed to streamline translation activities, making it easier to convert between XLIFF and Excel formats. It supports handling multiple XLIFF files, automating feedback workflows, comparing translation files, and creating deployment packages for Tabs and Labels in Salesforce.
 
 ## Purpose
+
 The primary purpose of this tool is to support translation workflows by providing easy conversions between XLIFF and Excel formats. It helps in:
+
 - Converting XLIFF files to Excel for easier data handling.
 - Converting Excel files back to XLIFF, ready for re-import into translation systems.
 - Automating feedback workflows for translations.
+- Comparing old and new XLIFF files to identify changes.
 - Creating structured deployment packages for Tabs and Labels translations.
 
 ## Features & Buttons
@@ -32,5 +35,10 @@ The primary purpose of this tool is to support translation workflows by providin
 - **Usage**: Select multiple `.objectTranslation` files to package by language. The tool will remove unnecessary sections, create `package.xml` files, and save each language's deployment package as a zip file.
 - **Preparation**: To download the necessary `.objectTranslation` files from an environment, navigate to **Salesforce Inspector** -> **Download Metadata** -> **ObjectTranslations**. Wait for the download process to complete and then download the files to use them with this tool.
 
+### 6. **Files Comparison**
+- **Purpose**: Compares two XLIFF files (old and new) to identify differences in translations.
+- **Usage**: Select an old XLIFF file and a new XLIFF file. The tool generates a comparison report in Excel format, highlighting translations that are new, modified, or deleted.
+
 ## Version
-- **1.1**
+
+- **1.2**
