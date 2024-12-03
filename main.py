@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 # Global variable for output file path
 output_file_path = None
 target_language = None
-
+version = "Version 1.2"
 
 # Function to style the Excel sheet
 def style_excel_sheet(ws):
@@ -488,11 +488,115 @@ def create_package(root):
         print("File selection was cancelled.")
 
 
+def compare_xliffs():
+    def select_old_xliff():
+        nonlocal old_xliff_path
+        old_xliff_path = filedialog.askopenfilename(
+            title="Select Old XLIFF File",
+            filetypes=[("XLIFF files", "*.xlf"), ("All Files", "*.*")]
+        )
+        if old_xliff_path:
+            old_xliff_label.config(text=f"Old XLIFF: {os.path.basename(old_xliff_path)}")
+        else:
+            old_xliff_label.config(text="Old XLIFF: Not selected")
+
+    def select_new_xliff():
+        nonlocal new_xliff_path
+        new_xliff_path = filedialog.askopenfilename(
+            title="Select New XLIFF File",
+            filetypes=[("XLIFF files", "*.xlf"), ("All Files", "*.*")]
+        )
+        if new_xliff_path:
+            new_xliff_label.config(text=f"New XLIFF: {os.path.basename(new_xliff_path)}")
+        else:
+            new_xliff_label.config(text="New XLIFF: Not selected")
+
+    def process_comparison():
+        if not old_xliff_path or not new_xliff_path:
+            messagebox.showerror("Error", "Please select both Old and New XLIFF files.")
+            return
+
+        try:
+            # Load XLIFFs into Excel workbooks
+            old_wb, _ = xliff_to_excel(old_xliff_path)
+            new_wb, _ = xliff_to_excel(new_xliff_path)
+
+            # Get the worksheets
+            old_ws = old_wb.active
+            new_ws = new_wb.active
+
+            # Create comparison data structures
+            old_ids = {row[0].value for row in old_ws.iter_rows(min_row=2, max_col=1)}
+            new_ids = {row[0].value for row in new_ws.iter_rows(min_row=2, max_col=1)}
+
+            # Add columns for comparison
+            old_ws["G1"] = "Deleted in New XLIFF"
+            for row in old_ws.iter_rows(min_row=2, max_row=old_ws.max_row, min_col=1, max_col=1):
+                id_value = row[0].value
+                old_ws[f"G{row[0].row}"] = "Deleted" if id_value not in new_ids else "Exists"
+
+            new_ws["G1"] = "Status in Old XLIFF"
+            for row in new_ws.iter_rows(min_row=2, max_row=new_ws.max_row, min_col=1, max_col=1):
+                id_value = row[0].value
+                new_ws[f"G{row[0].row}"] = "New" if id_value not in old_ids else "Exists"
+
+            # Save comparison result to a new file
+            comparison_file = filedialog.asksaveasfilename(
+                title="Save Comparison File As",
+                defaultextension=".xlsx",
+                filetypes=[("Excel files", "*.xlsx"), ("All Files", "*.*")]
+            )
+            if comparison_file:
+                comparison_wb = openpyxl.Workbook()
+                old_sheet = comparison_wb.create_sheet("Old XLIFF", 0)
+                new_sheet = comparison_wb.create_sheet("New XLIFF", 1)
+
+                for row in old_ws.iter_rows(values_only=True):
+                    old_sheet.append(row)
+                for row in new_ws.iter_rows(values_only=True):
+                    new_sheet.append(row)
+
+                comparison_wb.save(comparison_file)
+                messagebox.showinfo("Success", f"Comparison file saved at {comparison_file}")
+            else:
+                messagebox.showwarning("Cancelled", "Comparison file save was cancelled.")
+
+        except Exception as e:
+            logging.error(f"An error occurred during the comparison: {e}")
+            messagebox.showerror("Error", f"An error occurred: {e}")
+
+    # New window for file selection
+    compare_window = tk.Toplevel(root)
+    compare_window.title("Compare XLIFF Files")
+    compare_window.geometry("400x200")
+
+    old_xliff_path = None
+    new_xliff_path = None
+
+    # Labels and buttons for file selection
+    old_xliff_label = tk.Label(compare_window, text="Old XLIFF: Not selected")
+    old_xliff_label.pack(pady=5)
+
+    select_old_button = tk.Button(compare_window, text="Select Old XLIFF", command=select_old_xliff)
+    select_old_button.pack(pady=5)
+
+    new_xliff_label = tk.Label(compare_window, text="New XLIFF: Not selected")
+    new_xliff_label.pack(pady=5)
+
+    select_new_button = tk.Button(compare_window, text="Select New XLIFF", command=select_new_xliff)
+    select_new_button.pack(pady=5)
+
+    compare_button = tk.Button(compare_window, text="Compare Files", command=process_comparison)
+    compare_button.pack(pady=10)
+
+
+
+
 # GUI update to add the new button
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("Excel to XLIFF Converter")
-    root.geometry("300x260")
+    root.geometry("300x320")
     btn_width = 30
 
     btn_excel_to_xliff = tk.Button(root, text="Excel to XLIFF", command=select_excel_to_xliff, width=btn_width)
@@ -513,7 +617,10 @@ if __name__ == "__main__":
                                    , width=btn_width)
     btn_create_package.pack(pady=10)
 
-    lbl_version = tk.Label(root, text="Version 1.1")
+    btn_compare_files = tk.Button(root, text="Files Comparison", command=compare_xliffs, width=btn_width)
+    btn_compare_files.pack(pady=10)
+
+    lbl_version = tk.Label(root, text=f"{version}")
     lbl_version.pack(pady=10)
 
     root.mainloop()
